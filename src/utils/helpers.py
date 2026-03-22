@@ -11,12 +11,10 @@ def rerun():
 class QuizManager:
     def __init__(self):
         self.questions=[]
-        self.user_answers=[]
         self.results=[]
 
     def generate_questions(self, generator:QuestionGenerator , topic:str , question_type:str , difficulty:str , num_questions:int):
         self.questions=[]
-        self.user_answers=[]
         self.results=[]
 
         try:
@@ -43,10 +41,15 @@ class QuizManager:
             st.error(f"Error generating question {e}")
             return False
         
+        # Reset user answers for new quiz
+        st.session_state['user_answers'] = [None] * len(self.questions)
         return True
     
 
     def attempt_quiz(self):
+        if 'user_answers' not in st.session_state:
+            st.session_state['user_answers'] = [None] * len(self.questions)
+        
         for i,q in enumerate(self.questions):
             st.markdown(f"**Question {i+1} : {q['question']}**")
 
@@ -54,23 +57,26 @@ class QuizManager:
                 user_answer = st.radio(
                     f"Select and answer for Question {i+1}",
                     q['options'],
-                    key=f"mcq_{i}"
+                    key=f"mcq_{i}",
+                    index=q['options'].index(st.session_state['user_answers'][i]) if st.session_state['user_answers'][i] in q['options'] else None
                 )
 
-                self.user_answers.append(user_answer)
+                st.session_state['user_answers'][i] = user_answer
 
             else:
                 user_answer=st.text_input(
                     f"Fill in the blank for Question {i+1}",
-                    key = f"fill_blank_{i}"
+                    key = f"fill_blank_{i}",
+                    value=st.session_state['user_answers'][i] if st.session_state['user_answers'][i] else ""
                 )
 
-                self.user_answers.append(user_answer)
+                st.session_state['user_answers'][i] = user_answer
 
     def evaluate_quiz(self):
         self.results=[]
 
-        for i, (q,user_ans) in enumerate(zip(self.questions,self.user_answers)):
+        for i, q in enumerate(self.questions):
+            user_ans = st.session_state['user_answers'][i]
             result_dict = {
                 'question_number' : i+1,
                 'question': q['question'],
